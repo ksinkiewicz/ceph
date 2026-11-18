@@ -1,5 +1,5 @@
-// -*- mode:C++; tab-width:8; c-basic-offset:2; indent-tabs-mode:nil -*-
-// vim: ts=8 sw=2 sts=2 expandtab ft=cpp
+// -*- mode:C++; tab-width:8; c-basic-offset:2; indent-tabs-mode:t -*-
+// vim: ts=8 sw=2 smarttab ft=cpp
 
 #pragma once
 
@@ -20,6 +20,9 @@ static inline int rgw_http_error_to_errno(int http_err)
   if (http_err >= 200 && http_err <= 299)
     return 0;
   switch (http_err) {
+    case 0:
+      // No HTTP response — daemon is down, connection refused or timed out
+      return -ECONNREFUSED;
     case 304:
       return -ERR_NOT_MODIFIED;
     case 400:
@@ -36,6 +39,16 @@ static inline int rgw_http_error_to_errno(int http_err)
         return -ENOTEMPTY;
     case 503:
         return -EBUSY;
+    case 408:
+        return -ETIMEDOUT;
+    case 429:
+        return -EBUSY;
+    case 500:
+        return -EIO;
+    case 502:
+        return -EIO;
+    case 504:
+        return -ETIMEDOUT;
     default:
         return -ERR_INTERNAL_ERROR;
   }
