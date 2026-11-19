@@ -218,6 +218,10 @@ public:
     return http_status;
   }
 
+  // curl's description of a transport failure (e.g. "SSL certificate
+  // problem: certificate has expired"), empty if there was none
+  std::string_view get_error_message() const;
+
   void set_http_status(long _http_status) {
     http_status = _http_status;
   }

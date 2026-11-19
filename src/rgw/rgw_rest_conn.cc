@@ -3,6 +3,8 @@
 
 #include "rgw_rest_conn.h"
 #include "rgw_sal.h"
+#include "rgw_xml.h"
+#include "common/ceph_json.h"
 #include <boost/asio/io_context.hpp>
 #include <boost/asio/ip/tcp.hpp>
 
@@ -84,6 +86,53 @@ void RGWRESTConn::resolve_endpoints() {
                     << (ec ? " err=" + ec.message() : "") << dendl;
     }
   }
+}
+
+/*
+ * Extract the error code and message from an error response body sent by a
+ * remote RGW, either JSON ({"Code": ..., "Message": ...}, admin API default)
+ * or S3-style XML (<Error><Code>...</Code><Message>...</Message></Error>).
+ * Returns e.g. " (remote error: SignatureDoesNotMatch)", or "" if the body
+ * carries no recognizable error.
+ */
+static std::string remote_error_info(const bufferlist& body)
+{
+  static constexpr size_t max_error_body = 64 * 1024;
+  if (body.length() == 0 || body.length() > max_error_body) {
+    return {};
+  }
+  std::string data = body.to_str();
+  std::string code, message;
+
+  JSONParser json;
+  if (json.parse(data.c_str(), data.length())) {
+    if (auto obj = json.find_obj("Code"); obj) {
+      code = obj->get_data();
+    }
+    if (auto obj = json.find_obj("Message"); obj) {
+      message = obj->get_data();
+    }
+  } else {
+    RGWXMLParser xml;
+    if (xml.init() && xml.parse(data.c_str(), data.length(), 1)) {
+      if (auto error = xml.find_first("Error"); error) {
+        if (auto obj = error->find_first("Code"); obj) {
+          code = obj->get_data();
+        }
+        if (auto obj = error->find_first("Message"); obj) {
+          message = obj->get_data();
+        }
+      }
+    }
+  }
+  if (code.empty()) {
+    return {};
+  }
+  std::string info = " (remote error: " + code;
+  if (!message.empty()) {
+    info += ": " + message;
+  }
+  return info + ")";
 }
 
 RGWRESTConn::RGWRESTConn(CephContext *_cct, rgw::sal::Driver* driver,
@@ -666,6 +715,17 @@ int RGWRESTConn::get_resource(const DoutPrefixProvider *dpp,
       }
     }
     if (ret < 0) {
+      // the errno alone can't tell e.g. HTTP 500 from 502 or 504 (all map to
+      // ERR_INTERNAL_ERROR), so report the HTTP status the remote returned
+      if (long http_status = req.get_http_status(); http_status >= 400) {
+        ldpp_dout(dpp, 0) << "ERROR: GET " << endpoint.get_url() << resource
+                          << " returned HTTP " << http_status
+                          << remote_error_info(bl) << dendl;
+      } else if (auto msg = req.get_error_message(); !msg.empty()) {
+        // no HTTP response: connection refused, TLS failure, timeout, ...
+        ldpp_dout(dpp, 0) << "ERROR: GET " << endpoint.get_url() << resource
+                          << " failed: " << msg << dendl;
+      }
       ldpp_dout(dpp, 5) << __func__ << ": complete_request() returned ret=" << ret << dendl;
     }
     break;

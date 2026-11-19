@@ -693,6 +693,14 @@ bool RGWHTTPClient::is_done()
   return req_data->is_done();
 }
 
+std::string_view RGWHTTPClient::get_error_message() const
+{
+  if (!req_data) {
+    return {};
+  }
+  return req_data->error_buf;
+}
+
 /*
  * wait for async request to complete
  */
