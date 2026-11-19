@@ -9,6 +9,7 @@
 #include <boost/tokenizer.hpp>
 
 #include "common/ceph_json.h"
+#include "common/errno.h"
 #include "common/Formatter.h"
 #include "common/versioned_variant.h"
 
@@ -145,6 +146,20 @@ rgw_http_errors rgw_http_s3_errors({
     { ERR_NO_SUCH_OWNERSHIP_CONTROLS, {404, "OwnershipControlsNotFoundError"}},
     { ERR_EXPIRED_TOKEN, {400, "ExpiredToken"}},
 });
+
+std::string rgw_strerror(int err)
+{
+  if (err < 0) {
+    err = -err;
+  }
+  // RGW-internal codes start at ERR_INVALID_BUCKET_NAME (2000)
+  if (err >= ERR_INVALID_BUCKET_NAME) {
+    if (auto i = rgw_http_s3_errors.find(err); i != rgw_http_s3_errors.end()) {
+      return "(" + std::to_string(err) + ") " + i->second.second;
+    }
+  }
+  return cpp_strerror(err);
+}
 
 rgw_http_errors rgw_http_swift_errors({
     { EACCES, {403, "AccessDenied" }},

@@ -60,6 +60,7 @@ extern "C" {
 #include "rgw/async_utils.h"
 
 #include "rgw_user.h"
+#include "rgw_http_errors.h"
 #include "rgw_otp.h"
 #include "rgw_rados.h"
 #include "rgw_acl.h"
@@ -1884,7 +1885,7 @@ static int commit_period(rgw::sal::ConfigStore* cfgstore,
   JSONParser p;
   int ret = send_to_remote_or_url(remote_conn, url, opt_region, access, secret, info, bl, p);
   if (ret < 0) {
-    cerr << "request failed: " << cpp_strerror(-ret) << std::endl;
+    cerr << "request failed: " << rgw_strerror(-ret) << std::endl;
 
     // did we parse an error message?
     auto message = p.find_obj("Message");
@@ -2035,7 +2036,7 @@ static int do_period_pull(rgw::sal::ConfigStore* cfgstore,
   int ret = send_to_remote_or_url(remote_conn, url, opt_region, access_key, secret_key,
                                   info, bl, p);
   if (ret < 0) {
-    cerr << "request failed: " << cpp_strerror(-ret) << std::endl;
+    cerr << "request failed: " << rgw_strerror(-ret) << std::endl;
     return ret;
   }
   try {
@@ -2089,14 +2090,14 @@ static void get_md_sync_status(list<string>& status)
 
   int ret = sync.init(dpp());
   if (ret < 0) {
-    status.push_back(string("failed to retrieve sync info: sync.init() failed: ") + cpp_strerror(-ret));
+    status.push_back(string("failed to retrieve sync info: sync.init() failed: ") + rgw_strerror(-ret));
     return;
   }
 
   rgw_meta_sync_status sync_status;
   ret = sync.read_sync_status(dpp(), &sync_status);
   if (ret < 0) {
-    status.push_back(string("failed to read sync status: ") + cpp_strerror(-ret));
+    status.push_back(string("failed to read sync status: ") + rgw_strerror(-ret));
     return;
   }
 
@@ -2155,7 +2156,7 @@ static void get_md_sync_status(list<string>& status)
 
   ret = sync.read_master_log_shards_info(dpp(), master_period, &master_shards_info);
   if (ret < 0) {
-    status.push_back(string("failed to fetch master sync status: ") + cpp_strerror(-ret));
+    status.push_back(string("failed to fetch master sync status: ") + rgw_strerror(-ret));
     return;
   }
 
@@ -2188,7 +2189,7 @@ static void get_md_sync_status(list<string>& status)
     map<int, rgw_mdlog_shard_data> master_pos;
     ret = sync.read_master_log_shards_next(dpp(), sync_status.sync_info.period, shards_behind, &master_pos);
     if (ret < 0) {
-      derr << "ERROR: failed to fetch master next positions (" << cpp_strerror(-ret) << ")" << dendl;
+      derr << "ERROR: failed to fetch master next positions (" << rgw_strerror(-ret) << ")" << dendl;
     } else {
       for (auto iter : master_pos) {
         rgw_mdlog_shard_data& shard_data = iter.second;
@@ -2245,7 +2246,7 @@ static void get_data_sync_status(const rgw_zone_id& source_zone, list<string>& s
 
   int ret = sync.init(dpp());
   if (ret < 0) {
-    push_ss(ss, status, tab) << string("failed to retrieve sync info: ") + cpp_strerror(-ret);
+    push_ss(ss, status, tab) << string("failed to retrieve sync info: ") + rgw_strerror(-ret);
     flush_ss(ss, status);
     return;
   }
@@ -2253,7 +2254,7 @@ static void get_data_sync_status(const rgw_zone_id& source_zone, list<string>& s
   rgw_data_sync_status sync_status;
   ret = sync.read_sync_status(dpp(), &sync_status);
   if (ret < 0 && ret != -ENOENT) {
-    push_ss(ss, status, tab) << string("failed read sync status: ") + cpp_strerror(-ret);
+    push_ss(ss, status, tab) << string("failed read sync status: ") + rgw_strerror(-ret);
     flush_ss(ss, status);
     return;
   }
@@ -2261,7 +2262,7 @@ static void get_data_sync_status(const rgw_zone_id& source_zone, list<string>& s
   set<int> recovering_shards;
   ret = sync.read_recovering_shards(dpp(), sync_status.sync_info.num_shards, recovering_shards);
   if (ret < 0 && ret != ENOENT) {
-    push_ss(ss, status, tab) << string("failed read recovering shards: ") + cpp_strerror(-ret);
+    push_ss(ss, status, tab) << string("failed read recovering shards: ") + rgw_strerror(-ret);
     flush_ss(ss, status);
     return;
   }
@@ -2319,7 +2320,7 @@ static void get_data_sync_status(const rgw_zone_id& source_zone, list<string>& s
 
   ret = sync.read_source_log_shards_info(dpp(), &source_shards_info);
   if (ret < 0) {
-    push_ss(ss, status, tab) << string("failed to fetch source sync status: ") + cpp_strerror(-ret);
+    push_ss(ss, status, tab) << string("failed to fetch source sync status: ") + rgw_strerror(-ret);
     flush_ss(ss, status);
     return;
   }
@@ -2349,7 +2350,7 @@ static void get_data_sync_status(const rgw_zone_id& source_zone, list<string>& s
     ret = sync.read_source_log_shards_next(dpp(), shards_behind, &master_pos);
 
     if (ret < 0) {
-      derr << "ERROR: failed to fetch next positions (" << cpp_strerror(-ret) << ")" << dendl;
+      derr << "ERROR: failed to fetch next positions (" << rgw_strerror(-ret) << ")" << dendl;
     } else {
       for (auto iter : master_pos) {
         rgw_datalog_shard_data& shard_data = iter.second;
@@ -5365,7 +5366,7 @@ int main(int argc, const char **argv)
         JSONParser p;
         int ret = send_to_url(url, opt_region, access_key, secret_key, info, bl, p);
         if (ret < 0) {
-          cerr << "request failed: " << cpp_strerror(-ret) << std::endl;
+          cerr << "request failed: " << rgw_strerror(-ret) << std::endl;
           if (ret == -EACCES) {
             cerr << "If the realm has been changed on the master zone, the "
                 "master zone's gateway may need to be restarted to recognize "
@@ -7062,7 +7063,7 @@ int main(int argc, const char **argv)
                                   access_key, secret_key,
                                   info, bl, p);
       if (ret < 0) {
-        cerr << "request failed: " << cpp_strerror(-ret) << std::endl;
+        cerr << "request failed: " << rgw_strerror(-ret) << std::endl;
         return -ret;
       }
     }

@@ -15,6 +15,13 @@ extern rgw_http_errors rgw_http_sts_errors;
 
 extern rgw_http_errors rgw_http_iam_errors;
 
+/*
+ * Like cpp_strerror(), but RGW-internal error codes (ERR_*, which are not
+ * POSIX errnos) are described by their S3 error name instead of
+ * "Unknown error <n>", e.g. "(2200) InternalError".
+ */
+std::string rgw_strerror(int err);
+
 static inline int rgw_http_error_to_errno(int http_err)
 {
   if (http_err >= 200 && http_err <= 299)
