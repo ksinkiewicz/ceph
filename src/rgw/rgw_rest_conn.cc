@@ -639,6 +639,9 @@ int RGWRESTConn::get_resource(const DoutPrefixProvider *dpp,
 
     populate_params(params, nullptr, self_zone_group);
 
+    // a failed attempt may have left an error response in bl; start each
+    // attempt with an empty buffer so the caller only sees the final one
+    bl.clear();
     RGWStreamIntoBufferlist cb(bl);
 
     RGWRESTStreamReadRequest req(cct, endpoint, &cb, NULL, &params, api_name, host_style);
@@ -693,6 +696,9 @@ int RGWRESTConn::send_resource(const DoutPrefixProvider *dpp, const std::string&
 
     populate_params(params, nullptr, self_zone_group);
 
+    // a failed attempt may have left an error response in bl; start each
+    // attempt with an empty buffer so the caller only sees the final one
+    bl.clear();
     RGWStreamIntoBufferlist cb(bl);
 
     RGWRESTStreamSendRequest req(cct, method, endpoint, &cb, NULL, &params, api_name, host_style);
