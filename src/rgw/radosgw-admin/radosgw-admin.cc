@@ -1984,7 +1984,7 @@ static int update_period(rgw::sal::ConfigStore* cfgstore,
     ret = commit_period(cfgstore, realm, *realm_writer, period, remote, url,
                         opt_region, access, secret, force, site);
     if (ret < 0) {
-      cerr << "failed to commit period: " << cpp_strerror(-ret) << std::endl;
+      cerr << "failed to commit period: " << rgw_strerror(-ret) << std::endl;
       return ret;
     }
   }
@@ -2638,7 +2638,7 @@ static int bucket_source_sync_status(const DoutPrefixProvider *dpp, rgw::sal::Ra
   r = rgw_read_remote_bilog_info(dpp, conn, source_bucket->get_key(),
                                  remote_info, remote_markers, null_yield);
   if (r < 0) {
-    source_sync_info.error = fmt::format("failed to read remote log: {}", cpp_strerror(r));
+    source_sync_info.error = fmt::format("failed to read remote log: {}", rgw_strerror(r));
     return r;
   }
 
@@ -4897,7 +4897,7 @@ int main(int argc, const char **argv)
                                  realm_id, realm_name, period_id, period_epoch,
                                  &period);
         if (ret < 0) {
-          cerr << "period pull failed: " << cpp_strerror(-ret) << std::endl;
+          cerr << "period pull failed: " << rgw_strerror(-ret) << std::endl;
           return -ret;
         }
 
@@ -7104,7 +7104,7 @@ int main(int argc, const char **argv)
                           remote, url, opt_region, access_key, secret_key,
                           yes_i_really_mean_it, site.get());
       if (ret < 0) {
-        cerr << "failed to commit period: " << cpp_strerror(-ret) << std::endl;
+        cerr << "failed to commit period: " << rgw_strerror(-ret) << std::endl;
         return -ret;
       }
 
@@ -10687,7 +10687,7 @@ next:
                                      opt_source_zone, opt_source_bucket,
                                      opt_retry_delay_ms, timeout_at);
     if (ret < 0) {
-      ldpp_dout(dpp(), -1) << "bucket sync checkpoint failed: " << cpp_strerror(ret) << dendl;
+      ldpp_dout(dpp(), -1) << "bucket sync checkpoint failed: " << rgw_strerror(ret) << dendl;
       return -ret;
     }
   }

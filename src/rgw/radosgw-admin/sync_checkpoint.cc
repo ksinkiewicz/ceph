@@ -240,7 +240,7 @@ int rgw_bucket_sync_checkpoint(const DoutPrefixProvider* dpp,
                                 info, entry.remote_markers, y);
       if (r < 0) {
         ldpp_dout(dpp, 0) << "failed to fetch remote bilog markers: "
-            << cpp_strerror(r) << dendl;
+            << rgw_strerror(r) << dendl;
         throw std::system_error(-r, std::system_category());
       }
       entry.latest_gen = info.latest_gen;
@@ -275,7 +275,7 @@ int rgw_bucket_sync_checkpoint(const DoutPrefixProvider* dpp,
                                           e.pipe, e.latest_gen, e.remote_markers,
                                           retry_delay, timeout_at);
     if (r < 0) {
-      std::cerr << "bucket sync checkpoint failed: " << cpp_strerror(r) << std::endl;
+      std::cerr << "bucket sync checkpoint failed: " << rgw_strerror(r) << std::endl;
       return r;
     }
   }
